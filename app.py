@@ -287,6 +287,8 @@ footer{
 display:none !important;
 
 }
+
+"""
 # =====================================================
 # Theme
 # =====================================================
@@ -473,7 +475,6 @@ Made with ❤️ using **Python • Scikit-Learn • Gradio**
 # =====================================================
 
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 7860))
 
     demo.launch(
