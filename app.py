@@ -1,18 +1,20 @@
+import os
 import gradio as gr
 import joblib
 import numpy as np
 
-# ==========================
+# =====================================
 # Load Model
-# ==========================
+# =====================================
 try:
     model = joblib.load("loan_prediction_model.pkl")
 except Exception as e:
     raise RuntimeError(f"Error loading model: {e}")
 
-# ==========================
+
+# =====================================
 # Prediction Function
-# ==========================
+# =====================================
 def predict_loan(
     dependents,
     education,
@@ -26,12 +28,9 @@ def predict_loan(
     luxury_assets,
     bank_assets,
 ):
-
     try:
 
-        # -----------------------
-        # Input Validation
-        # -----------------------
+        # Validation
         if income <= 0:
             return "❌ Annual Income must be greater than 0."
 
@@ -42,9 +41,9 @@ def predict_loan(
             return "❌ Loan Term must be greater than 0."
 
         if not (300 <= cibil <= 900):
-            return "❌ CIBIL Score should be between 300 and 900."
+            return "❌ CIBIL Score must be between 300 and 900."
 
-        # Encoding
+        # Encode categorical variables
         education = 1 if education == "Graduate" else 0
         self_employed = 1 if self_employed == "Yes" else 0
 
@@ -66,95 +65,86 @@ def predict_loan(
 
         confidence = None
         if hasattr(model, "predict_proba"):
-            confidence = max(model.predict_proba(input_data)[0]) * 100
+            confidence = np.max(model.predict_proba(input_data)) * 100
 
-        if str(prediction).lower() in ["approved", "1", "yes"]:
-            result = "## ✅ Loan Approved"
+        if prediction in [1, "1", "Approved", "approved", "Yes", "yes"]:
+            result = "## ✅ Loan Approved 🎉"
         else:
             result = "## ❌ Loan Rejected"
 
-        if confidence:
-            result += f"\n\n### Confidence : **{confidence:.2f}%**"
+        if confidence is not None:
+            result += f"\n\n### Confidence: **{confidence:.2f}%**"
 
         return result
 
     except Exception as e:
-        return f"❌ Error : {str(e)}"
+        return f"❌ Error: {str(e)}"
 
 
-# ==========================
-# Custom Theme
-# ==========================
+# =====================================
+# Custom CSS
+# =====================================
 
 css = """
 body{
-background:#0d1117;
+    background:#0d1117;
 }
 
 .gradio-container{
-max-width:950px !important;
-margin:auto;
-border-radius:20px;
+    max-width:1000px !important;
+    margin:auto;
 }
 
-h1{
-text-align:center;
-color:#00E5FF;
+h1,h2,h3{
+    text-align:center;
 }
 
-.footer{
-text-align:center;
-font-size:18px;
-font-weight:bold;
-color:white;
-padding:15px;
+footer{
+    display:none !important;
 }
-
 """
 
-# ==========================
+
+# =====================================
 # Interface
-# ==========================
+# =====================================
 
-with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
+with gr.Blocks(theme=gr.themes.Soft(), css=css) as demo:
 
-    gr.Markdown(
-        """
+    gr.Markdown("""
 # 🏦 AI Loan Approval Prediction System
 
-### Predict whether a loan application is likely to be **Approved** or **Rejected** using Machine Learning.
+### Predict whether a loan will be **Approved** or **Rejected**
 
 ---
+
 ### 👩‍💻 Developed By
 **Prachi Valecha**
 
-### 🎓 College
-**Panipat Institute of Engineering and Technology**
+### 🎓 Panipat Institute of Engineering and Technology
 
 ---
-"""
-    )
+""")
 
     with gr.Row():
 
         dependents = gr.Slider(
-            0,
-            10,
+            0, 10,
             value=0,
             step=1,
-            label="👨‍👩‍👧 Number of Dependents",
+            label="👨‍👩‍👧 Number of Dependents"
         )
 
         education = gr.Radio(
             ["Graduate", "Not Graduate"],
             value="Graduate",
-            label="🎓 Education",
+            label="🎓 Education"
         )
 
         self_employed = gr.Radio(
             ["Yes", "No"],
             value="No",
-            label="💼 Self Employed",
+            label="💼 Self Employed"
         )
 
     with gr.Row():
@@ -163,17 +153,15 @@ with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
 
         loan_amount = gr.Number(label="🏦 Loan Amount")
 
-        loan_term = gr.Number(label="📅 Loan Term")
+        loan_term = gr.Number(label="📅 Loan Term (Months)")
 
-    with gr.Row():
-
-        cibil = gr.Slider(
-            300,
-            900,
-            value=700,
-            step=1,
-            label="📈 CIBIL Score",
-        )
+    cibil = gr.Slider(
+        300,
+        900,
+        value=700,
+        step=1,
+        label="📈 CIBIL Score"
+    )
 
     with gr.Row():
 
@@ -187,15 +175,15 @@ with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
 
         bank_assets = gr.Number(label="🏦 Bank Assets")
 
-    predict_btn = gr.Button(
+    predict = gr.Button(
         "🔍 Predict Loan Status",
-        variant="primary",
+        variant="primary"
     )
 
     output = gr.Markdown()
 
-    predict_btn.click(
-        predict_loan,
+    predict.click(
+        fn=predict_loan,
         inputs=[
             dependents,
             education,
@@ -212,20 +200,30 @@ with gr.Blocks(css=css, theme=gr.themes.Soft()) as demo:
         outputs=output,
     )
 
-    gr.Markdown(
-        """
+    gr.Markdown("""
 ---
 ### 💡 Tips
 
-✅ Higher CIBIL Score improves approval chances.
+✅ Higher CIBIL Score generally improves approval chances.
 
-✅ Higher income increases eligibility.
+✅ Stable income increases eligibility.
 
-✅ Higher assets strengthen loan approval.
+✅ Higher assets strengthen your loan profile.
 
 ---
-Made with ❤️ using **Python • Gradio • Machine Learning**
-"""
-    )
+Made with ❤️ using **Python | Gradio | Scikit-Learn**
+""")
 
-demo.launch()
+
+# =====================================
+# Launch for Render
+# =====================================
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 7860))
+
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        share=False
+    )
